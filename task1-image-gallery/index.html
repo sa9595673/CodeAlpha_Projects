@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Gallery — CodeAlpha Task 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --border: #222;
+    --accent: #e8ff3b;
+    --accent2: #ff5e3b;
+    --text: #f0f0f0;
+    --muted: #666;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    padding: 2rem 3rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  header span {
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* FILTER BAR */
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.5rem 3rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-right: 0.5rem;
+  }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.4rem 1.1rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 500;
+  }
+
+  /* GALLERY GRID */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1px;
+    padding: 0 3rem 3rem;
+  }
+  @media(max-width:600px) {
+    .gallery { padding: 0 1rem 2rem; }
+    header, .filters { padding-left: 1rem; padding-right: 1rem; }
+  }
+
+  .gallery-item {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--surface);
+    animation: fadeIn 0.5s ease both;
+  }
+  .gallery-item.hidden { display: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .gallery-item img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94);
+    display: block;
+  }
+  .gallery-item:hover img { transform: scale(1.08); }
+
+  .gallery-item .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.35s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1.2rem;
+  }
+  .gallery-item:hover .overlay { opacity: 1; }
+  .overlay .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.05em;
+    color: #fff;
+  }
+  .overlay .cat {
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 0.2rem;
+  }
+  .overlay .zoom-icon {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #000;
+    font-size: 1rem;
+    transform: scale(0);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .gallery-item:hover .zoom-icon { transform: scale(1); }
+
+  /* LIGHTBOX */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s;
+    backdrop-filter: blur(8px);
+  }
+  .lightbox.open { opacity: 1; pointer-events: all; }
+
+  .lb-inner {
+    position: relative;
+    max-width: 90vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .lb-inner img {
+    max-width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.8);
+    transition: opacity 0.3s;
+  }
+  .lb-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .lb-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+    color: #fff;
+  }
+  .lb-cat {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 0.25rem 0.7rem;
+    border: 1px solid var(--accent);
+    border-radius: 1rem;
+  }
+  .lb-counter {
+    color: var(--muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    margin-left: auto;
+  }
+
+  .lb-btn {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+    backdrop-filter: blur(4px);
+  }
+  .lb-btn:hover { background: var(--accent); color: #000; transform: translateY(-50%) scale(1.1); }
+  #lb-prev { left: 1.5rem; }
+  #lb-next { right: 1.5rem; }
+  #lb-close {
+    position: fixed;
+    top: 1.5rem; right: 1.5rem;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+    backdrop-filter: blur(4px);
+  }
+  #lb-close:hover { background: var(--accent2); color: #fff; }
+
+  /* STRIP */
+  .lb-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    max-width: 90vw;
+    padding-bottom: 4px;
+  }
+  .lb-strip::-webkit-scrollbar { height: 3px; }
+  .lb-strip::-webkit-scrollbar-thumb { background: var(--accent); }
+  .lb-thumb {
+    width: 56px; height: 40px;
+    object-fit: cover;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.2s, outline 0.2s;
+    flex-shrink: 0;
+    outline: 2px solid transparent;
+  }
+  .lb-thumb.active { opacity: 1; outline-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Gallery</h1>
+  <span>CodeAlpha — Task 01</span>
+</header>
+
+<div class="filters">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-btn active" data-cat="all">All</button>
+  <button class="filter-btn" data-cat="nature">Nature</button>
+  <button class="filter-btn" data-cat="architecture">Architecture</button>
+  <button class="filter-btn" data-cat="travel">Travel</button>
+  <button class="filter-btn" data-cat="abstract">Abstract</button>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <div class="lb-inner">
+    <img id="lb-img" src="" alt="">
+    <div class="lb-meta">
+      <span class="lb-title" id="lb-title"></span>
+      <span class="lb-cat" id="lb-cat"></span>
+      <span class="lb-counter" id="lb-counter"></span>
+    </div>
+    <div class="lb-strip" id="lb-strip"></div>
+  </div>
+  <button class="lb-btn" id="lb-prev">&#8592;</button>
+  <button class="lb-btn" id="lb-next">&#8594;</button>
+  <button id="lb-close">&#10005;</button>
+</div>
+
+<script>
+const images = [
+  { src: 'https://picsum.photos/seed/forest1/800/600',    title: 'Forest Dawn',      cat: 'nature' },
+  { src: 'https://picsum.photos/seed/city2/800/600',     title: 'Urban Pulse',      cat: 'architecture' },
+  { src: 'https://picsum.photos/seed/mount3/800/600',    title: 'Mountain Echo',    cat: 'nature' },
+  { src: 'https://picsum.photos/seed/bridge4/800/600',   title: 'Steel & Sky',      cat: 'architecture' },
+  { src: 'https://picsum.photos/seed/beach5/800/600',    title: 'Coastal Light',    cat: 'travel' },
+  { src: 'https://picsum.photos/seed/abstract6/800/600', title: 'Color Theory',     cat: 'abstract' },
+  { src: 'https://picsum.photos/seed/road7/800/600',     title: 'The Long Road',    cat: 'travel' },
+  { src: 'https://picsum.photos/seed/abstract8/800/600', title: 'Fluid Geometry',   cat: 'abstract' },
+  { src: 'https://picsum.photos/seed/lake9/800/600',     title: 'Still Waters',     cat: 'nature' },
+  { src: 'https://picsum.photos/seed/tower10/800/600',   title: 'Glass Giant',      cat: 'architecture' },
+  { src: 'https://picsum.photos/seed/japan11/800/600',   title: 'Eastern Gate',     cat: 'travel' },
+  { src: 'https://picsum.photos/seed/art12/800/600',     title: 'Neon Dreams',      cat: 'abstract' },
+];
+
+const gallery = document.getElementById('gallery');
+const lightbox = document.getElementById('lightbox');
+const lbImg = document.getElementById('lb-img');
+const lbTitle = document.getElementById('lb-title');
+const lbCat = document.getElementById('lb-cat');
+const lbCounter = document.getElementById('lb-counter');
+const lbStrip = document.getElementById('lb-strip');
+
+let currentIndex = 0;
+let visibleItems = [...images];
+
+function buildGallery(cat = 'all') {
+  gallery.innerHTML = '';
+  visibleItems = cat === 'all' ? [...images] : images.filter(i => i.cat === cat);
+  visibleItems.forEach((img, idx) => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.style.animationDelay = (idx * 0.05) + 's';
+    item.innerHTML = `
+      <img src="${img.src}" alt="${img.title}" loading="lazy">
+      <div class="overlay">
+        <div class="zoom-icon">&#128269;</div>
+        <div class="title">${img.title}</div>
+        <div class="cat">${img.cat}</div>
+      </div>`;
+    item.addEventListener('click', () => openLightbox(idx));
+    gallery.appendChild(item);
+  });
+}
+
+function buildStrip() {
+  lbStrip.innerHTML = '';
+  visibleItems.forEach((img, idx) => {
+    const th = document.createElement('img');
+    th.src = img.src; th.className = 'lb-thumb';
+    th.addEventListener('click', () => goTo(idx));
+    lbStrip.appendChild(th);
+  });
+}
+
+function openLightbox(idx) {
+  currentIndex = idx;
+  buildStrip();
+  updateLightbox();
+  lightbox.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function updateLightbox() {
+  const img = visibleItems[currentIndex];
+  lbImg.style.opacity = 0;
+  setTimeout(() => { lbImg.src = img.src; lbImg.style.opacity = 1; }, 150);
+  lbTitle.textContent = img.title;
+  lbCat.textContent = img.cat;
+  lbCounter.textContent = `${currentIndex + 1} / ${visibleItems.length}`;
+  document.querySelectorAll('.lb-thumb').forEach((th, i) => th.classList.toggle('active', i === currentIndex));
+  const strip = document.getElementById('lb-strip');
+  const activeThumb = strip.children[currentIndex];
+  if (activeThumb) activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+}
+
+function goTo(idx) {
+  currentIndex = (idx + visibleItems.length) % visibleItems.length;
+  updateLightbox();
+}
+
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('lb-prev').addEventListener('click', () => goTo(currentIndex - 1));
+document.getElementById('lb-next').addEventListener('click', () => goTo(currentIndex + 1));
+document.getElementById('lb-close').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildGallery(btn.dataset.cat);
+  });
+});
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'ArrowRight') goTo(currentIndex + 1);
+  if (e.key === 'ArrowLeft') goTo(currentIndex - 1);
+  if (e.key === 'Escape') closeLightbox();
+});
+
+buildGallery();
+</script>
+</body>
+</html>
